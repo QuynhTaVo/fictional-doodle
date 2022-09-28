@@ -20,15 +20,20 @@ from sklearn.model_selection import GridSearchCV
 import pickle
 
 def load_data(database_filepath):
+    '''
+    load data
+    '''
     # load data from database
     engine = create_engine('sqlite:///' + database_filepath)
     df = pd.read_sql('SELECT * FROM disaster_categories', engine)
     X = df['message']
     y = df.iloc[:,4:]
-    y.drop(columns=['related', 'child_alone'], inplace=True)
     return X, y, y.columns
 
 def tokenize(text):
+    '''
+    tokenize
+    '''
     text = text.lower()
     tokens = word_tokenize(text)
     tokens = [w for w in tokens if w not in stopwords.words("english")]
@@ -37,16 +42,33 @@ def tokenize(text):
 
 
 def build_model():
-    pipeline = Pipeline([('CountVectorizer', CountVectorizer(tokenizer=tokenize)), ('TfidfTransformer', TfidfTransformer()), ('MultiOutputClassifier', MultiOutputClassifier(RandomForestClassifier()))])
-    return pipeline
+    '''
+    set up pipeline and grid search
+    '''
+    pipeline = Pipeline([('CountVectorizer', CountVectorizer(tokenizer=tokenize)),
+                         ('TfidfTransformer', TfidfTransformer()),
+                         ('MultiOutputClassifier', MultiOutputClassifier(LogisticRegression()))
+                        ])
+    parameters = {
+    'MultiOutputClassifier__estimator__max_iter': [15, 20, 25],
+    'MultiOutputClassifier__estimator__solver': ['lbfgs', 'liblinear', 'sag', 'saga']
+    }
+    cv = GridSearchCV(pipeline, param_grid=parameters)
+    return cv
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
+    '''
+    evaluate model
+    '''
     y_pred = model.predict(X_test)
     print(classification_report(Y_test, y_pred, target_names=category_names))
 
 
 def save_model(model, model_filepath):
+    '''
+    save model
+    '''
     pickle.dump(model, open(model_filepath, 'wb'))
 
 

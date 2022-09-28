@@ -4,6 +4,9 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 def load_data(messages_filepath, categories_filepath):
+    '''
+    load data from messages and categories
+    '''
     # load messages dataset
     messages = pd.read_csv(messages_filepath)
     # load categories dataset
@@ -27,6 +30,8 @@ def load_data(messages_filepath, categories_filepath):
     
         # convert column from string to numeric
         categories[column] = categories[column].astype(int)
+    # clean out incorrect values
+    categories = categories[(categories.related == 0) | (categories.related == 1)]
     # drop the original categories column from `df`
     df.drop(columns='categories', inplace=True)
     # concatenate the original dataframe with the new `categories` dataframe
@@ -34,13 +39,27 @@ def load_data(messages_filepath, categories_filepath):
     return df
 
 def clean_data(df):
+    '''
+    clean data
+    '''
     # drop duplicates
     df.drop_duplicates(inplace=True)
+    # drop nan
+    df.dropna(inplace=True)
+    # drop unary columns
+    to_be_dropped=[]
+    for c in df.columns:
+        if c!='genre' and len(df[c].unique()) == 1:
+            to_be_dropped.append(c)
+    df.drop(columns=to_be_dropped, inplace=True)
     return df
 
 def save_data(df, database_filename):
+    '''
+    save data
+    '''
     engine = create_engine('sqlite:///' + database_filename)
-    df.to_sql('disaster_categories', engine, index=False)  
+    df.to_sql('disaster_categories', engine, index=False, if_exists='replace')  
 
 
 def main():
